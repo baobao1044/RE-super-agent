@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "re-super-agent"
+version = "0.1.0"
+description = "Super agent for professional Reverse Engineering: hybrid MCP tool layer + multi-specialist orchestration + dynamic workflow engine."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "RE-super-agent" }]
+keywords = ["reverse-engineering", "malware", "ctf", "mcp", "agent", "angr", "ghidra", "frida", "qiling"]
+
+# Core dependencies: enough to run static (r2) + malware (risk scan) + agent core + sandbox shell.
+# Heavy RE engines (angr, ghidra, qiling, frida, debuggers) are OPTIONAL groups below so a
+# minimal environment still boots.
+dependencies = [
+  "mcp>=1.2.0",
+  "litellm>=1.50.0",
+  "pydantic>=2.6",
+  "pyyaml>=6.0",
+  "rich>=13.7",
+  "r2pipe>=1.8",
+  "pefile>=2024.0",
+  "pyelftools>=0.31",
+  "capstone>=5.0",
+  "yara-python>=4.5",
+  "docker>=7.0",
+]
+
+[project.optional-dependencies]
+# Full RE engine set: decompilation, symbolic, emulation, dynamic.
+full = [
+  "pyghidra>=3.0",
+  "angr>=9.2",
+  "qiling>=1.5",
+  "unicorn>=2.0",
+  "frida>=16.5",
+  "frida-tools>=12.4",
+  "capa>=7.0",
+  "binwalk>=2.3; platform_system!='Windows'",
+]
+# Windows-only dynamic backend deps.
+windows = [
+  "frida>=16.5",
+  "frida-tools>=12.4",
+]
+# Dev / test tooling.
+dev = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.23",
+  "pytest-cov>=5.0",
+  "ruff>=0.5",
+]
+
+[project.scripts]
+re-agent = "agent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agent*", "mcp_servers*", "tools*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-ra -q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+ignore = ["E501"]

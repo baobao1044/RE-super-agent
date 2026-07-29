@@ -1,0 +1,83 @@
+# RE-super-agent configuration.
+# Copy to config/config.yaml and edit. Never commit config.yaml.
+
+# --- LLM (cloud, provider-agnostic via LiteLLM) ---
+llm:
+  provider: openai            # openai | claude | gemini | ... (any LiteLLM model string)
+  model: gpt-4o-mini
+  # api_key: read from env var below by default; or set inline (avoid committing)
+  api_key_env: OPENAI_API_KEY
+  temperature: 0.2
+  max_tokens: 4096
+  # timeout per LLM call, seconds
+  timeout: 120
+
+# --- Per-specialist model overrides (optional; fall back to llm.* above) ---
+specialists:
+  static:        { model: "" }
+  dynamic:       { model: "" }
+  symbolic:      { model: "" }
+  deobfuscation: { model: "" }
+  malware:       { model: "" }
+  supervisor:    { model: "" }
+
+# --- MCP servers: stdio spawn config ---
+mcp:
+  servers:
+    static:       { command: "python", args: ["-m", "mcp_servers.static.server"] }
+    dynamic:      { command: "python", args: ["-m", "mcp_servers.dynamic.server"] }
+    symbolic:     { command: "python", args: ["-m", "mcp_servers.symbolic.server"] }
+    deobfuscation:{ command: "python", args: ["-m", "mcp_servers.deobfuscation.server"] }
+    malware:      { command: "python", args: ["-m", "mcp_servers.malware.server"] }
+  # per-call tool timeout, seconds
+  tool_timeout: 120
+
+# --- Safety / isolation ---
+safety:
+  # require human confirmation for MEDIUM-risk real execution
+  require_confirmation: true
+  # refuse HIGH-risk dynamic entirely
+  refuse_high_risk: true
+  # default sandbox image names
+  sandbox_image_core: "re-agent:core"
+  sandbox_image_full: "re-agent:full"
+  # if docker is unavailable, fall back to static-only (never execute on host)
+  docker_unavailable_fallback: static_only
+
+# --- Engine availability (auto-detected if not set) ---
+engines:
+  ghidra:
+    enabled: auto            # auto | true | false
+    install_path: ""         # path to Ghidra install dir if not on PATH
+  radare2:
+    enabled: auto
+  angr:
+    enabled: auto
+  frida:
+    enabled: auto
+  qiling:
+    enabled: auto
+  capstone:
+    enabled: auto
+  capa:
+    enabled: auto
+  yara:
+    enabled: auto
+  binwalk:
+    enabled: auto
+
+# --- Workflow engine ---
+workflow:
+  # max number of self-adaptations per run before giving up
+  max_adaptations: 8
+  # save successful workflows as playbooks for reuse
+  persist_playbooks: true
+  # directory for generated code (sandboxed execution copies from here)
+  codegen_dir: ".codegen"
+  # symbolic state budget to avoid path explosion
+  symbolic_state_budget: 50000
+
+# --- State / workspace ---
+state:
+  workspace_dir: "sessions"
+  log_dir: "logs"

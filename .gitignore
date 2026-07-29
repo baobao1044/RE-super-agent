@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+*.whl
+
+# Virtual envs
+.venv/
+venv/
+env/
+ENV/
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# Tooling caches
+.mypy_cache/
+.ruff_cache/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ZCode harness workspace (not part of this project)
+.zcode/
+
+# Project: secrets & runtime state
+config/config.yaml
+config/config.local.yaml
+.env
+*.session
+*.session.json
+sessions/
+logs/
+*.log
+
+# RE workspace artifacts (per-session analysis state)
+workspace/
+*.workspace.json
+
+# Downloaded/synthesized binaries
+samples/bin/
+samples/gen/
+
+# Ghidra project files
+*.gpr
+*.rep/
