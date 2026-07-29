@@ -133,11 +133,15 @@ class Supervisor:
     @staticmethod
     def _find_anomaly(wf: Workflow, adapted: set[str]):
         for n in wf.nodes:
-            if n.id in adapted or n.status != "done":
+            if n.id in adapted:
                 continue
-            anomaly = WorkflowEngine.detect_anomaly(n.outputs)
-            if anomaly:
-                return anomaly, n.id
+            # A node that ran but returned an error (or 'vm'/explosion) is an anomaly.
+            if n.status == "failed":
+                return "node_failed", n.id
+            if n.status == "done":
+                anomaly = WorkflowEngine.detect_anomaly(n.outputs)
+                if anomaly:
+                    return anomaly, n.id
         return None, None
 
     # --------------------------------------------------------- report synth
