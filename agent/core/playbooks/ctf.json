@@ -1,0 +1,14 @@
+{
+  "binary_type": "ctf",
+  "workflow": {
+    "nodes": [
+      {"id": "n1", "sub_task": "scan risk + strings for the flag checker signature", "specialist": "malware", "tool": "risk_scan", "status": "pending", "outputs": {}, "error": null},
+      {"id": "n2", "sub_task": "list + decompile the checker function", "specialist": "static", "tool": "decompile_function", "status": "pending", "outputs": {}, "error": null},
+      {"id": "n3", "sub_task": "extract the flag via constraint solving", "specialist": "symbolic", "tool": "extract_flag", "status": "pending", "outputs": {}, "error": null}
+    ],
+    "edges": [
+      {"from_node": "n1", "to_node": "n2", "condition": "success"},
+      {"from_node": "n2", "to_node": "n3", "condition": "success"}
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "binary_type": "packed_vm",
+  "workflow": {
+    "nodes": [
+      {"id": "n1", "sub_task": "scan risk level and hints", "specialist": "malware", "tool": "risk_scan", "status": "pending", "outputs": {}, "error": null},
+      {"id": "n2", "sub_task": "identify the VM dispatcher and handler table", "specialist": "static", "tool": "decompile_function", "status": "pending", "outputs": {}, "error": null},
+      {"id": "n3", "sub_task": "lift each VM handler into the shared VM spec", "specialist": "deobfuscation", "tool": "lift_vm_handler", "status": "pending", "outputs": {}, "error": null},
+      {"id": "n4", "sub_task": "emulate + trace a concrete path to narrow the search space", "specialist": "deobfuscation", "tool": "trace_execution", "status": "pending", "outputs": {}, "error": null},
+      {"id": "n5", "sub_task": "disassemble the VM bytecode using the lifted spec", "specialist": "deobfuscation", "tool": "disassemble_vm_bytecode", "status": "pending", "outputs": {}, "error": null},
+      {"id": "n6", "sub_task": "reconstruct native ops from the trace + hybrid solve the narrow slice", "specialist": "deobfuscation", "tool": "hybrid_solve", "status": "pending", "outputs": {}, "error": null},
+      {"id": "n7", "sub_task": "locate and solve the recovered native check", "specialist": "symbolic", "tool": "find_input_satisfying", "status": "pending", "outputs": {}, "error": null}
+    ],
+    "edges": [
+      {"from_node": "n1", "to_node": "n2", "condition": "success"},
+      {"from_node": "n2", "to_node": "n3", "condition": "success"},
+      {"from_node": "n3", "to_node": "n4", "condition": "success"},
+      {"from_node": "n4", "to_node": "n5", "condition": "success"},
+      {"from_node": "n5", "to_node": "n6", "condition": "success"},
+      {"from_node": "n6", "to_node": "n7", "condition": "success"}
+    ]
+  }
+}

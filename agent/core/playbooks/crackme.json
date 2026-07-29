@@ -1,0 +1,19 @@
+{
+  "binary_type": "crackme",
+  "workflow": {
+    "nodes": [
+      {"id": "n1", "sub_task": "scan risk level and hints", "specialist": "malware", "tool": "risk_scan", "status": "pending", "outputs": {}, "error": null},
+      {"id": "n2", "sub_task": "list functions and locate the license check", "specialist": "static", "tool": "list_functions", "status": "pending", "outputs": {}, "error": null},
+      {"id": "n3", "sub_task": "decompile the candidate check function", "specialist": "static", "tool": "decompile_function", "status": "pending", "outputs": {}, "error": null},
+      {"id": "n4", "sub_task": "solve the check constraint to bypass it", "specialist": "symbolic", "tool": "find_input_satisfying", "status": "pending", "outputs": {}, "error": null},
+      {"id": "n5", "sub_task": "spawn under sandbox + hook to confirm bypass", "specialist": "dynamic", "tool": "spawn", "status": "pending", "outputs": {}, "error": null}
+    ],
+    "edges": [
+      {"from_node": "n1", "to_node": "n2", "condition": "success"},
+      {"from_node": "n2", "to_node": "n3", "condition": "success"},
+      {"from_node": "n3", "to_node": "n4", "condition": "success"},
+      {"from_node": "n4", "to_node": "n5", "condition": "success"},
+      {"from_node": "n1", "to_node": "n5", "condition": "fail"}
+    ]
+  }
+}
