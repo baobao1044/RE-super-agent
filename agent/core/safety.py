@@ -68,9 +68,17 @@ def classify_risk(info: BinaryInfo) -> str:
     return "LOW"
 
 
-def decide(info: BinaryInfo) -> ExecutionDecision:
-    """Decide how a binary may be (or must not be) executed."""
-    risk = classify_risk(info)
+def decide(info: BinaryInfo, risk_assessment: dict | None = None) -> ExecutionDecision:
+    """Decide how a binary may be (or must not be) executed.
+
+    If `risk_assessment` is provided (a risk_policy dict with risk_level/risk_hints from
+    the malware specialist), it is used authoritatively. Otherwise we classify from the
+    hints already on `info`.
+    """
+    if risk_assessment is not None:
+        risk = (risk_assessment.get("risk_level") or "UNKNOWN").upper()
+    else:
+        risk = classify_risk(info)
 
     # No sandbox => never execute, regardless of risk. Static analysis only.
     if not sandbox.is_available():

@@ -154,3 +154,15 @@ def write_garbage(tmp_path, name="garbage.bin", n: int = 64, seed: int = 0xC0DE)
     p = tmp_path / name
     p.write_bytes(build_garbage(n=n, seed=seed))
     return p
+
+
+def append_markers(data: bytes, markers: list[bytes]) -> bytes:
+    """Append recognizable byte markers (e.g. ASCII strings/section names) to a binary.
+
+    Risk heuristics scan the whole file, so appended markers are detectable. Returns
+    data + markers joined with NUL padding.
+    """
+    if not markers:
+        return data
+    pad = b"\x00" * 16
+    return data + pad + pad.join(markers) + pad
