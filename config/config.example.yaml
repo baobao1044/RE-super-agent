@@ -20,7 +20,7 @@ llm:
 # llm:
 #   provider: openai
 #   model: openai/zai-org/GLM-5.2    # "openai/" prefix routes via the OpenAI client to api_base
-#   api_key: wandb_v1_...            # or api_key_env: WANDB_API_KEY
+#   api_key: wandb_v1_your-key-here  # or api_key_env: WANDB_API_KEY
 #   api_base: https://api.inference.wandb.ai/v1
 #   temperature: 0.2
 

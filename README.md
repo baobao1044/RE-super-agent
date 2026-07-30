@@ -1,12 +1,44 @@
-# RE-super-agent
+<div align="center">
 
-A **super agent for professional Reverse Engineering** — a hybrid architecture that combines
-5 domain MCP servers, a Python multi-specialist orchestration core, a dynamic self-adapting
-workflow engine, and a safety/isolation layer. Targets **Windows PE** and **Linux ELF**
-(x86 / x64), plus **Python-protector-obfuscated** files.
+# 🔬 RE-super-agent
 
-> **For research, CTF, and authorized malware analysis only.** Only analyze binaries you are
-> authorized to analyze.
+**A super agent for professional Reverse Engineering**
+
+A hybrid architecture combining 5 domain MCP servers, a Python multi-specialist
+orchestration core, a dynamic self-adapting workflow engine, and a safety/isolation layer.
+
+Targets **Windows PE** & **Linux ELF** (x86 / x64) · **Python-protector-obfuscated** files
+
+[![Status](https://img.shields.io/badge/status-stages%201--10%20complete-brightgreen)](#status)
+[![Tests](https://img.shields.io/badge/tests-298%20green-success)](#testing)
+[![TDD](https://img.shields.io/badge/method-TDD%20RED%E2%86%92GREEN%E2%86%92REFACTOR-blue)](#testing)
+[![Python](https://img.shields.io/badge/python-3.11%2B-yellow)](https://www.python.org)
+[![License](https://img.shields.io/badge/license-MIT-lightgrey)](#license)
+[![LLM](https://img.shields.io/badge/LLM-provider--agnostic%20(LiteLLM)-orange)](#configuration)
+
+</div>
+
+> ⚠️ **For research, CTF, and authorized malware analysis only.** Only analyze binaries
+> you are authorized to analyze. Never execute untrusted code on the host — the agent
+> routes all dynamic execution through an isolated sandbox.
+
+---
+
+## Table of contents
+
+1. [Architecture — Mindmap](#architecture--mindmap)
+2. [Key capabilities](#key-capabilities)
+3. [Quick start](#quick-start)
+4. [Usage](#usage)
+5. [Python-protector deobfuscation](#python-protector-deobfuscation)
+6. [Safety model](#safety-model)
+7. [Dynamic workflow engine](#dynamic-workflow-engine)
+8. [MCP tool surface](#mcp-tool-surface)
+9. [Project layout](#project-layout)
+10. [Configuration](#configuration)
+11. [Testing](#testing)
+12. [Status](#status)
+13. [License](#license)
 
 ---
 
@@ -58,13 +90,13 @@ workflow engine, and a safety/isolation layer. Targets **Windows PE** and **Linu
 ## Key capabilities
 
 | Capability | What it does |
-|---|---|
-| **5 MCP servers** | 44 tools total, wrapping Ghidra, radare2/rizin, angr, Frida, gdb, WinDbg, Qiling, capa, YARA, binwalk. Graceful degrade when engines missing (pure-Python fallbacks). |
-| **5 Specialists** | Each runs a ReAct loop (reason→act→observe) over its MCP tools, with domain-specific system prompts. |
-| **Dynamic workflow engine** | LLM synthesizes a declarative DAG per binary; engine self-adapts on anomalies (VM detected → insert deobf node; symbolic explode → trace-narrow + backtrack; node failed → switch specialist). Checkpoint/resume for long analyses. |
-| **Playbook library** | 4 bundled templates (crackme / packed_vm / malware / ctf); successful workflows saved & reused. |
-| **Safety layer** | Pre-flight risk scan (LOW/MEDIUM/HIGH) → Docker sandbox / Qiling-in-Docker / human confirm / static-only refusal. Never executes untrusted code on host. |
-| **Python deobfuscation** | Safe static RE of enphysic.pro/Ngocuyencoder-protected `.py` files — deserialize custom marshal → structural lifter → **agentic LLM decompiler** recovers real Python source (if/for/try-except) via LLM API. Never executes protected code. |
+|:---|:---|
+| 🛠️ **5 MCP servers** | 44 tools total, wrapping Ghidra, radare2/rizin, angr, Frida, gdb, WinDbg, Qiling, capa, YARA, binwalk. Graceful degrade when engines missing (pure-Python fallbacks). |
+| 🧠 **5 Specialists** | Each runs a ReAct loop (reason→act→observe) over its MCP tools, with domain-specific system prompts. |
+| 🔄 **Dynamic workflow engine** | LLM synthesizes a declarative DAG per binary; engine self-adapts on anomalies (VM detected → insert deobf node; symbolic explode → trace-narrow + backtrack; node failed → switch specialist). Checkpoint/resume for long analyses. |
+| 📚 **Playbook library** | 4 bundled templates (crackme / packed_vm / malware / ctf); successful workflows saved & reused. |
+| 🛡️ **Safety layer** | Pre-flight risk scan (LOW/MEDIUM/HIGH) → Docker sandbox / Qiling-in-Docker / human confirm / static-only refusal. Never executes untrusted code on host. |
+| 🐍 **Python deobfuscation** | Safe static RE of enphysic.pro/Ngocuyencoder-protected `.py` files — deserialize custom marshal → structural lifter → **agentic LLM decompiler** recovers real Python source (if/for/try-except) via LLM API. Never executes protected code. |
 
 ---
 
@@ -95,7 +127,7 @@ cp config/config.example.yaml config/config.yaml
 #      llm:
 #        provider: openai
 #        model: gpt-4o-mini          # or openai/zai-org/GLM-5.2 for W&B Inference
-#        api_key: sk-...             # or api_key_env: OPENAI_API_KEY
+#        api_key: sk-your-openai-api-key  # or api_key_env: OPENAI_API_KEY
 #        api_base: ""                # custom endpoint, or https://api.inference.wandb.ai/v1
 
 # 5. Run
@@ -109,7 +141,7 @@ re-agent ./samples/crackme.elf "find and bypass the password check"
 llm:
   provider: openai
   model: openai/zai-org/GLM-5.2
-  api_key: wandb_v1_your_key_here
+  api_key: wandb_v1_your-key-here
   api_base: https://api.inference.wandb.ai/v1
   temperature: 0.2
   max_tokens: 4096
@@ -375,7 +407,7 @@ RE-super-agent/
 llm:
   provider: openai                          # openai | claude | gemini (any LiteLLM model string)
   model: gpt-4o-mini                        # or openai/zai-org/GLM-5.2 for W&B Inference
-  api_key: sk-...                           # or api_key_env: OPENAI_API_KEY
+  api_key: sk-your-openai-api-key            # or api_key_env: OPENAI_API_KEY
   api_base: ""                              # custom endpoint (W&B Inference, Azure, Ollama)
   temperature: 0.2
   max_tokens: 4096
@@ -449,11 +481,24 @@ Docker, Ghidra, angr, Frida, or any cloud LLM.
 
 ## Status
 
-**Implementation complete (Stages 1–10).** 298 tests green, TDD throughout. Backends
-degrade gracefully when heavy engines are absent, so the core boots and analyzes binaries
-on a minimal install.
+**Implementation complete (Stages 1–10).** 298 tests green, TDD throughout (RED → GREEN →
+REFACTOR at every stage). Backends degrade gracefully when heavy engines are absent, so the
+core boots and analyzes binaries on a minimal install.
 
-Verified live: the agent RE'd a `enphysic.pro/Ngocuyencoder`-protected Python file
+| Stage | Focus | Status |
+|:---:|:---|:---:|
+| 1 | Binary parsing, PE/ELF detection, risk hints | ✅ |
+| 2 | MCP servers (44 tools) + backends | ✅ |
+| 3 | Specialists + ReAct loop | ✅ |
+| 4 | Supervisor + planner + workspace | ✅ |
+| 5 | Safety layer (risk gate, Docker, refusal) | ✅ |
+| 6 | Dynamic workflow engine (DAG synth + adapt) | ✅ |
+| 7 | Playbooks + checkpoint/resume | ✅ |
+| 8 | Restricted-subprocess fallback (no-Docker isolation) | ✅ |
+| 9 | Agentic LLM decompiler (bytecode → real source) | ✅ |
+| 10 | Docs, README, GitHub polish | ✅ |
+
+**Verified live:** the agent RE'd a `enphysic.pro/Ngocuyencoder`-protected Python file
 end-to-end — recovered the protector identity, 7 nested scopes, bytecode disassembly, and
 real Python source with control flow via the agentic LLM decompiler (GLM-5.2).
 
@@ -461,4 +506,13 @@ real Python source with control flow via the agentic LLM decompiler (GLM-5.2).
 
 ## License
 
-MIT.
+MIT. See [`LICENSE`](LICENSE) for details.
+
+---
+
+<div align="center">
+
+<sub>Built as a research platform for professional reverse engineering.<br>
+🔐 Only analyze binaries you are authorized to analyze.</sub>
+
+</div>

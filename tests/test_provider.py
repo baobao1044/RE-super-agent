@@ -56,7 +56,7 @@ def fake_completion(response):
 # ---------------------------------------------------------------------------
 def test_text_only_completion_normalized(monkeypatch):
     fn = fake_completion(_resp(_msg(content="The license check is at 0x401234.")))
-    prov = LiteLLMProvider(model="gpt-4o-mini", completion_fn=fn, api_key="sk-x")
+    prov = LiteLLMProvider(model="gpt-4o-mini", completion_fn=fn, api_key="test-fake-key")
     r = prov.complete([{"role": "user", "content": "where is the check?"}])
     assert isinstance(r, LLMResponse)
     assert r.content == "The license check is at 0x401234."
@@ -90,7 +90,7 @@ def test_malformed_tool_arguments_falls_back_to_empty_dict():
 
 def test_forwards_model_messages_tools_to_completion_fn():
     fn = fake_completion(_resp(_msg(content="ok")))
-    prov = LiteLLMProvider(model="claude-3-5-sonnet", completion_fn=fn, api_key="k")
+    prov = LiteLLMProvider(model="claude-3-5-sonnet", completion_fn=fn, api_key="test-fake-key")
     tools = [{"type": "function", "function": {"name": "f", "parameters": {}}}]
     prov.complete([{"role": "user", "content": "hi"}], tools=tools, temperature=0.5)
     assert fn.last_model == "claude-3-5-sonnet"
@@ -103,15 +103,15 @@ def test_forwards_api_base_to_completion_fn():
     # OpenAI-compatible endpoint (e.g. W&B Inference) needs a custom base URL.
     fn = fake_completion(_resp(_msg(content="ok")))
     prov = LiteLLMProvider(model="openai/zai-org/GLM-5.2", completion_fn=fn,
-                           api_key="wandb_v1_x", api_base="https://api.inference.wandb.ai/v1")
+                           api_key="test-wandb-fake-key", api_base="https://api.inference.wandb.ai/v1")
     prov.complete([{"role": "user", "content": "hi"}])
     assert fn.last_kw["api_base"] == "https://api.inference.wandb.ai/v1"
-    assert fn.last_kw["api_key"] == "wandb_v1_x"
+    assert fn.last_kw["api_key"] == "test-wandb-fake-key"
 
 
 def test_no_api_base_when_not_set():
     fn = fake_completion(_resp(_msg(content="ok")))
-    prov = LiteLLMProvider(model="gpt-4o-mini", completion_fn=fn, api_key="k")
+    prov = LiteLLMProvider(model="gpt-4o-mini", completion_fn=fn, api_key="test-fake-key")
     prov.complete([{"role": "user", "content": "hi"}])
     assert "api_base" not in fn.last_kw
 
