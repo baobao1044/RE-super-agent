@@ -95,11 +95,13 @@ def format_trace(trace: list[dict]) -> str:
 
 
 # ----------------------------------------------------------------- supervisor build
-def build_supervisor(*, config_path: str | None = None, session_dir: str | None = None):
+def build_supervisor(*, binary_path: str, config_path: str | None = None,
+                     session_dir: str | None = None):
     """Construct the live Supervisor: LLM provider + real specialists wired to the MCP
-    tool registries. Lazily imported so tests don't require config / cloud credentials.
+    tool registries. `binary_path` is bound into each registry so tools act on the right
+    target. Lazily imported so tests don't require config / cloud credentials.
     """
-    from tools.config import get as get_config
+    from tools.config import load as load_config
     from agent.llm.provider import LiteLLMProvider
     from agent.core.supervisor import Supervisor
     from agent.specialists.malware import MalwareSpecialist
@@ -108,7 +110,7 @@ def build_supervisor(*, config_path: str | None = None, session_dir: str | None 
     from agent.specialists.symbolic import SymbolicSpecialist
     from agent.specialists.deobfuscation import DeobfuscationSpecialist
 
-    cfg = get_config(config_path)
+    cfg = load_config(config_path)
     llm_cfg = cfg.get("llm", {}) or {}
     wf_cfg = cfg.get("workflow", {}) or {}
     provider = LiteLLMProvider(
@@ -120,18 +122,18 @@ def build_supervisor(*, config_path: str | None = None, session_dir: str | None 
         timeout=llm_cfg.get("timeout", 120),
     )
     # Wire each specialist to its MCP server's tool registry (pure-logic backends degrade
-    # gracefully when heavy engines are absent).
+    # gracefully when heavy engines are absent). binary_path is bound into the closures.
     specialists = {
         "malware": MalwareSpecialist(provider=provider,
-                                     tools_registry=_malware_registry()),
+                                     tools_registry=_malware_registry(binary_path)),
         "static": StaticSpecialist(provider=provider,
-                                    tools_registry=_static_registry()),
+                                    tools_registry=_static_registry(binary_path)),
         "dynamic": DynamicSpecialist(provider=provider,
-                                     tools_registry=_dynamic_registry()),
+                                     tools_registry=_dynamic_registry(binary_path)),
         "symbolic": SymbolicSpecialist(provider=provider,
-                                       tools_registry=_symbolic_registry()),
+                                       tools_registry=_symbolic_registry(binary_path)),
         "deobfuscation": DeobfuscationSpecialist(provider=provider,
-                                                  tools_registry=_deobf_registry()),
+                                                  tools_registry=_deobf_registry(binary_path)),
     }
     return Supervisor(provider=provider, sandbox=_sandbox(),
                       specialists=specialists, playbooks_dir=cfg.get("playbooks_dir"),
@@ -143,46 +145,47 @@ def _sandbox():
     return sandbox if sandbox.is_available() else None
 
 
-def _malware_registry():
+def _malware_registry(binary_path: str):
     from mcp_servers.malware import server
-    return {"risk_scan": lambda a: server.tool_risk_scan(a.get("path", "")),
-            "extract_strings": lambda a: server.tool_extract_strings(a.get("path", ""),
-                                                                       a.get("min_len", 4))}
+    return {"risk_scan": lambda a: server.tool_risk_scan(binary_path),
+            "extract_strings": lambda a: server.tool_extract_strings(binary_path,
+                                                                      a.get("min_len", 4))}
 
 
-def _static_registry():
+def _static_registry(binary_path: str):
     from mcp_servers.static import server
     return {
-        "list_functions": lambda a: server.tool_list_functions(a.get("path", "")),
-        "decompile_function": lambda a: server.tool_decompile_function(a.get("path", ""),
+        "list_functions": lambda a: server.tool_list_functions(binary_path),
+        "decompile_function": lambda a: server.tool_decompile_function(binary_path,
                                                                        a.get("addr", 0)),
-        "disassemble": lambda a: server.tool_disassemble(a.get("path", ""), a.get("addr", 0),
-                                                         a.get("count", 20)),
-        "xrefs_to": lambda a: server.tool_xrefs_to(a.get("path", ""), a.get("addr", 0)),
-        "strings": lambda a: server.tool_strings(a.get("path", "")),
-        "search_pattern": lambda a: server.tool_search_pattern(a.get("path", ""),
+        "disassemble": lambda a: server.tool_disassemble(binary_path,
+                                                          addr=a.get("addr", 0),
+                                                          count=a.get("count", 20)),
+        "xrefs_to": lambda a: server.tool_xrefs_to(binary_path, a.get("addr", 0)),
+        "strings": lambda a: server.tool_strings(binary_path),
+        "search_pattern": lambda a: server.tool_search_pattern(binary_path,
                                                                 a.get("pattern", "")),
-        "resolve_symbol": lambda a: server.tool_resolve_symbol(a.get("path", ""),
-                                                               a.get("name", "")),
+        "resolve_symbol": lambda a: server.tool_resolve_symbol(binary_path,
+                                                                a.get("name", "")),
     }
 
 
-def _dynamic_registry():
+def _dynamic_registry(binary_path: str):
     from mcp_servers.dynamic import server
     return {
-        "spawn": lambda a: server.tool_spawn(a.get("path", "")),
+        "spawn": lambda a: server.tool_spawn(binary_path),
         "attach": lambda a: server.tool_attach(a.get("pid", 0)),
-        "detect_anti_analysis": lambda a: server.tool_detect_anti_analysis(a.get("path", "")),
+        "detect_anti_analysis": lambda a: server.tool_detect_anti_analysis(binary_path),
         "recommend_handling": lambda a: server.tool_recommend_handling(a.get("anti_hints", [])),
         "get_regs": lambda a: server.tool_get_regs(),
     }
 
 
-def _symbolic_registry():
+def _symbolic_registry(binary_path: str):
     from mcp_servers.symbolic import server
     return {
-        "load_project": lambda a: server.tool_load_project(a.get("path", "")),
-        "explore_to": lambda a: server.tool_explore_to(a.get("path", ""), a.get("addr", 0)),
+        "load_project": lambda a: server.tool_load_project(binary_path),
+        "explore_to": lambda a: server.tool_explore_to(binary_path, a.get("addr", 0)),
         "find_input_satisfying": lambda a: server.tool_find_input_satisfying(a.get("predicate_str", "lambda x: True"),
                                                                               a.get("input_length", 1),
                                                                               a.get("alphabet_start", 0),
@@ -194,12 +197,12 @@ def _symbolic_registry():
     }
 
 
-def _deobf_registry():
+def _deobf_registry(binary_path: str):
     from mcp_servers.deobfuscation import server
     return {
-        "load_target": lambda a: server.tool_load_target(a.get("path", "")),
-        "trace_execution": lambda a: server.tool_trace_execution(a.get("path", ""),
-                                                                 max_steps=a.get("max_steps", 100)),
+        "load_target": lambda a: server.tool_load_target(binary_path),
+        "trace_execution": lambda a: server.tool_trace_execution(binary_path,
+                                                                  max_steps=a.get("max_steps", 100)),
         "lift_vm_handler": lambda a: server.tool_lift_vm_handler(a.get("dispatch_addr", 0x402000),
                                                                   a.get("opcode", 0),
                                                                   a.get("name", ""),
@@ -231,7 +234,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: binary not found: {args.binary}", file=sys.stderr)
         return 2
 
-    sup = build_supervisor(config_path=args.config, session_dir=args.session_dir)
+    sup = build_supervisor(binary_path=args.binary, config_path=args.config,
+                           session_dir=args.session_dir)
     report = sup.run(binary_path=args.binary, task=args.task)
 
     if args.json:
@@ -277,8 +281,9 @@ def _repl(args) -> int:
             if not Path(binary).exists():
                 print(f"error: binary not found: {binary}", file=sys.stderr)
                 continue
-            if sup is None:
-                sup = build_supervisor(config_path=args.config, session_dir=args.session_dir)
+            # Build (or rebuild) the supervisor bound to this binary.
+            sup = build_supervisor(binary_path=binary, config_path=args.config,
+                                   session_dir=args.session_dir)
             last_report = sup.run(binary_path=binary, task=task)
             print(format_report(last_report))
             continue

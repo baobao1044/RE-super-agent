@@ -32,7 +32,7 @@ def binary(tmp_path):
 
 
 def test_malware_registry_routes_to_real_tools(binary):
-    reg = cli._malware_registry()
+    reg = cli._malware_registry(binary)
     r = reg["risk_scan"]({"path": binary})
     assert isinstance(r, dict)
     assert "risk_level" in r
@@ -42,7 +42,7 @@ def test_malware_registry_routes_to_real_tools(binary):
 
 
 def test_static_registry_routes_to_real_tools(binary):
-    reg = cli._static_registry()
+    reg = cli._static_registry(binary)
     fns = reg["list_functions"]({"path": binary})
     assert isinstance(fns, dict) or isinstance(fns, list)
     s = reg["strings"]({"path": binary})
@@ -54,7 +54,7 @@ def test_static_registry_routes_to_real_tools(binary):
 
 
 def test_dynamic_registry_routes_to_real_tools(binary):
-    reg = cli._dynamic_registry()
+    reg = cli._dynamic_registry(binary)
     aa = reg["detect_anti_analysis"]({"path": binary})
     assert isinstance(aa, dict)
     assert "anti_debug" in aa or "hints" in aa
@@ -63,7 +63,7 @@ def test_dynamic_registry_routes_to_real_tools(binary):
 
 
 def test_symbolic_registry_routes_to_real_tools(binary):
-    reg = cli._symbolic_registry()
+    reg = cli._symbolic_registry(binary)
     lp = reg["load_project"]({"path": binary})
     assert isinstance(lp, dict)
     # find_input_satisfying degrades to a pure brute-force when angr is absent
@@ -74,7 +74,7 @@ def test_symbolic_registry_routes_to_real_tools(binary):
 
 
 def test_deobf_registry_routes_to_real_tools(binary):
-    reg = cli._deobf_registry()
+    reg = cli._deobf_registry(binary)
     lt = reg["load_target"]({"path": binary})
     assert isinstance(lt, dict)
     spec = reg["build_vm_spec"]({"dispatch_addr": 0x402000, "handlers": [

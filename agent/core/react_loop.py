@@ -7,7 +7,9 @@ Flow per turn:
   3. if it returned plain content (no tool_calls): that is the final answer -> stop.
 
 Safety rails: max_steps prevents a runaway model that never stops calling tools; a tool
-that raises records an error observation but lets the model recover.
+that raises records an error observation but lets the model recover; tool results are
+TRUNCATED to `max_tool_result_chars` before being appended to history so a huge payload
+(e.g. the 437KB base64 blob of a protected file) cannot blow the LLM context window.
 
 The tool registry is anything with execute(name, arguments) -> JSON-serializable result
 (maps cleanly to an MCPClient wrapper).
@@ -23,6 +25,10 @@ from agent.llm.provider import LLMResponse
 log = logging.getLogger(__name__)
 
 DEFAULT_MAX_STEPS = 25
+# Cap each tool result appended to the conversation. A protected/packed binary's strings
+# or disassembly can be hundreds of KB; without this the next reasoning step overflows
+# the model's context window. The full result stays in Step.tool_result for reporting.
+DEFAULT_MAX_TOOL_RESULT_CHARS = 8000
 
 
 @dataclass
@@ -48,6 +54,7 @@ def react_loop(
     messages: list[dict],
     tools: list[dict],
     max_steps: int = DEFAULT_MAX_STEPS,
+    max_tool_result_chars: int = DEFAULT_MAX_TOOL_RESULT_CHARS,
     system: str | None = None,
 ) -> ReActResult:
     """Run the ReAct loop to completion (or truncation).
@@ -105,10 +112,16 @@ def react_loop(
                 tool_result=tool_result, tool_error=tool_error,
             ))
 
-            # Observe: append the tool result for the next reasoning step.
+            # Observe: append the tool result for the next reasoning step. Truncate huge
+            # payloads so a protected binary's multi-hundred-KB strings/disasm cannot
+            # overflow the model context window. The full result is kept in Step above.
+            content = json.dumps(tool_result) if not isinstance(tool_result, str) else tool_result
+            if len(content) > max_tool_result_chars:
+                content = (content[:max_tool_result_chars]
+                           + f"\n...[truncated: {len(content) - max_tool_result_chars} more chars]")
             history.append({
                 "role": "tool",
                 "tool_call_id": tc.id or f"call_{steps_taken}",
                 "name": tc.name,
-                "content": json.dumps(tool_result) if not isinstance(tool_result, str) else tool_result,
+                "content": content,
             })

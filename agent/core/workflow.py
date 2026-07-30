@@ -164,12 +164,25 @@ class Workflow:
                     indeg[d] -= 1
         return order
 
-    def to_dict(self) -> dict:
+    def to_dict(self, *, max_outputs_chars: int = 2000) -> dict:
+        """Serialize the workflow. Node `outputs` are truncated so a huge tool result
+        (e.g. a protected binary's 437KB strings blob) cannot blow the LLM context when
+        the workflow dict is sent to the adapter.
+        """
+        def _truncate(v):
+            if isinstance(v, str) and len(v) > max_outputs_chars:
+                return v[:max_outputs_chars] + f"...[+{len(v)-max_outputs_chars} chars]"
+            if isinstance(v, list):
+                return [_truncate(x) for x in v[:50]] + ([f"...[+{len(v)-50} items]"] if len(v) > 50 else [])
+            if isinstance(v, dict):
+                return {k: _truncate(val) for k, val in v.items()}
+            return v
         return {
             "binary_type": self.binary_type,
             "nodes": [
                 {"id": n.id, "sub_task": n.sub_task, "specialist": n.specialist,
-                 "tool": n.tool, "inputs": n.inputs, "outputs": n.outputs,
+                 "tool": n.tool, "inputs": _truncate(n.inputs),
+                 "outputs": _truncate(n.outputs),
                  "condition": n.condition, "status": n.status, "error": n.error}
                 for n in self.nodes
             ],
