@@ -65,3 +65,9 @@ samples/gen/
 protected_deobfuscated_app.py
 protected_*.py
 *_protected.py
+
+# Recovered source output (generated per analysis run)
+recovered_source.py
+
+# Vendored third-party tools (installed from upstream, not part of this project)
+vendor/

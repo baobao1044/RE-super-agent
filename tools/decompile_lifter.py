@@ -328,12 +328,14 @@ def reconstruct_source(code_obj, *, depth=0):
     return "\n".join(out)
 
 
-def decompile_code(code_obj, *, workdir=None, decompiler="pycdc", timeout=30):
+def decompile_code(code_obj, *, workdir=None, decompiler="pylingual", timeout=120):
     """Decompile a code object to Python source.
 
-    Returns the custom structural lifter output (always works on 3.11). If an
-    external decompiler is available AND produces output, its output is preferred;
-    otherwise the lifted source is returned. Never raises.
+    Returns the custom structural lifter output (always works on 3.11) as a universal
+    fallback. If an external decompiler (pylingual preferred) is available AND produces
+    output, its output is preferred. Pylingual writes `decompiled_<stem>.py` into the
+    out-dir passed via `-o`; we read that file for clean source (avoids parsing logs from
+    stdout). Never raises — decompiler failure degrades to the lifter.
     """
     lifted = reconstruct_source(code_obj)
     if not decompiler:
@@ -344,12 +346,40 @@ def decompile_code(code_obj, *, workdir=None, decompiler="pycdc", timeout=30):
         own_temp = True
     wd = Path(workdir) if not isinstance(workdir, Path) else workdir
     pyc_path = wd / "recovered.pyc"
-    out_path = wd / "recovered.py"
+    out_dir = wd / "out"
     try:
         try:
             write_pyc(code_obj, pyc_path)
         except Exception:  # noqa: BLE001 -- marshal may fail for custom code objects
             return lifted
+
+        # Preferred: file-output mode. pylingual -o <dir> <pyc> writes
+        # decompiled_recovered.py into <dir>; pycdc -o <file> <pyc> writes to <file>.
+        # We try -o with the out-dir first (pylingual style), then -o with a file path.
+        try:
+            subprocess.run(
+                [decompiler, "-o", str(out_dir), str(pyc_path), "-q"],
+                capture_output=True, text=True, timeout=timeout,
+            )
+            # pylingual writes decompiled_<stem>.py into out_dir
+            candidate = out_dir / "decompiled_recovered.py"
+            if candidate.exists():
+                txt = candidate.read_text(encoding="utf-8", errors="replace")
+                if txt.strip():
+                    return txt
+            # fallback: some decompilers write directly to the -o path
+            if out_dir.exists() and out_dir.is_file():
+                txt = out_dir.read_text(encoding="utf-8", errors="replace")
+                if txt.strip():
+                    return txt
+        except FileNotFoundError:
+            return lifted
+        except subprocess.TimeoutExpired:
+            return lifted
+        except Exception:  # noqa: BLE001
+            pass  # fall through to stdout mode, then lifter
+
+        # Fallback: stdout-capture mode (decompiler prints source to stdout).
         try:
             proc = subprocess.run(
                 [decompiler, str(pyc_path)],
@@ -363,23 +393,13 @@ def decompile_code(code_obj, *, workdir=None, decompiler="pycdc", timeout=30):
             return lifted
         except Exception:  # noqa: BLE001
             return lifted
-        try:
-            proc2 = subprocess.run(
-                [decompiler, "-o", str(out_path), str(pyc_path)],
-                capture_output=True, text=True, timeout=timeout,
-            )
-            txt = out_path.read_text(encoding="utf-8", errors="replace") if out_path.exists() else ""
-            if txt.strip():
-                return txt
-        except Exception:  # noqa: BLE001
-            pass
     finally:
         if own_temp:
             shutil.rmtree(wd, ignore_errors=True)
     return lifted
 
 
-def decompile_python_source(path, *, workdir=None, decompiler="pycdc", timeout=60):
+def decompile_python_source(path, *, workdir=None, decompiler="pylingual", timeout=120):
     """End-to-end: deserialize the protected file -> decompile -> return Python source.
 
     Returns a dict: {available, source, decompiler, protector, ...} or

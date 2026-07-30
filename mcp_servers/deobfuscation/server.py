@@ -95,8 +95,8 @@ def tool_recover_python_source(path: str, *, max_disasm_lines: int = 80) -> dict
         return {"available": False, "error": f"{type(exc).__name__}: {exc}"}
 
 
-def tool_decompile_python_source(path: str, *, decompiler: str = "pycdc",
-                                 timeout: int = 60) -> dict:
+def tool_decompile_python_source(path: str, *, decompiler: str = "pylingual",
+                                 timeout: int = 120) -> dict:
     """Recover readable Python SOURCE from a Python-protector-obfuscated file.
 
     Deserializes the protected code object (never executes it) and lifts the bytecode
@@ -169,8 +169,8 @@ def recover_python_source(path: str, max_disasm_lines: int = 80) -> dict:
 
 
 @mcp.tool()
-def decompile_python_source(path: str, decompiler: str = "pycdc",
-                            timeout: int = 60) -> dict:
+def decompile_python_source(path: str, decompiler: str = "pylingual",
+                            timeout: int = 120) -> dict:
     """Recover readable Python SOURCE from a Python-protector-obfuscated file
     (supports enphysic.pro / Ngocuyencoder). Deserializes the protected code object
     without executing it and lifts the bytecode back to Python source."""

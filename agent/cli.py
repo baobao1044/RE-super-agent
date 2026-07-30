@@ -228,8 +228,8 @@ def _deobf_registry(binary_path: str):
         "recover_python_source": lambda a: server.tool_recover_python_source(binary_path,
                                                                               max_disasm_lines=a.get("max_disasm_lines", 40)),
         "decompile_python_source": lambda a: server.tool_decompile_python_source(binary_path,
-                                                                                  decompiler=a.get("decompiler", "pycdc"),
-                                                                                  timeout=a.get("timeout", 60)),
+                                                                                  decompiler=a.get("decompiler", "pylingual"),
+                                                                                  timeout=a.get("timeout", 120)),
     }
 
 
