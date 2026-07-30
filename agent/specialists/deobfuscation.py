@@ -34,6 +34,11 @@ Available tools:
 - reconstruct_native(trace, dedup): reconstruct native ops from a concrete trace.
 - hybrid_solve(trace, predicate_str, input_length, alphabet_start, alphabet_end):
   trace-narrowed constraint solving (pure solver fallback).
+- recover_python_source(max_disasm_lines): for an enphysic.pro / Ngocuyencoder-protected
+  .py file, deserialize the LZMA+base64+custom-marshal payload into a code object and
+  return the recovered structure (names, constants, nested scopes, capped bytecode) —
+  WITHOUT executing the protected code. Use this first for any .py target that looks
+  protected/obfuscated.
 
 Strategy (hybrid, avoids path explosion):
 1. Identify the VM dispatcher and handlers via static findings.
@@ -83,6 +88,10 @@ class _WorkspaceRegistry:
             if isinstance(res, list):
                 self.reconstructed = res
             return res
+        if name == "recover_python_source":
+            res = self._inner[name](arguments) if name in self._inner else {"error": "unknown"}
+            self.captured["recover_python_source"] = res
+            return res
         return self._inner[name](arguments) if name in self._inner else {"error": f"unknown tool {name}"}
 
     def _merge_spec(self, spec: dict):
@@ -125,6 +134,14 @@ class DeobfuscationSpecialist:
                   "trace": {"type": "array"}, "predicate_str": {"type": "string"},
                   "input_length": {"type": "integer"},
                   "alphabet_start": {"type": "integer"}, "alphabet_end": {"type": "integer"}}}}},
+            {"type": "function", "function": {"name": "recover_python_source",
+              "description": "Recover the structure of a Python-protector-obfuscated file "
+                             "(enphysic.pro / Ngocuyencoder) WITHOUT executing it: deserialize "
+                             "the LZMA+base64+custom marshal payload into a code object, then "
+                             "return names, constants, nested scopes and capped bytecode. "
+                             "Use this for .py files that look protected/obfuscated.",
+              "parameters": {"type": "object", "properties": {
+                  "max_disasm_lines": {"type": "integer", "default": 40}}}}},
         ]
 
         result = react_loop(
@@ -143,12 +160,24 @@ class DeobfuscationSpecialist:
                         f"{hex(workspace.vm_spec.get('dispatch_addr', 0))}",
                 source="deobfuscation",
             )
+        recovered = reg.captured.get("recover_python_source")
+        if isinstance(recovered, dict) and recovered.get("top_code"):
+            tc = recovered["top_code"]
+            nested = len(tc.get("nested", []))
+            workspace.add_finding(
+                kind="python_source_recovered",
+                summary=(f"Recovered protected Python structure: protector="
+                         f"{recovered.get('protector','?')}, top={tc.get('name')}, "
+                         f"{nested} nested scopes"),
+                source="deobfuscation",
+            )
 
         return {
             "narrative": result.final_text,
             "lifted_opcodes": lifted,
             "disassembly": reg.disassembly,
             "reconstructed": reg.reconstructed,
+            "recovered_source": recovered,
             "vm_spec": workspace.vm_spec,
             "steps": [{"tool": s.tool_name, "error": s.tool_error} for s in result.steps],
             "truncated": result.truncated,

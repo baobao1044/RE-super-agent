@@ -219,6 +219,8 @@ def _deobf_registry(binary_path: str):
                                                            a.get("input_length", 1),
                                                            a.get("alphabet_start", 0),
                                                            a.get("alphabet_end", 256)),
+        "recover_python_source": lambda a: server.tool_recover_python_source(binary_path,
+                                                                              max_disasm_lines=a.get("max_disasm_lines", 40)),
     }
 
 

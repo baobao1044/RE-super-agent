@@ -60,3 +60,8 @@ samples/gen/
 # Ghidra project files
 *.gpr
 *.rep/
+
+# Protected/target binaries under analysis (contain obfuscated bytecode)
+protected_deobfuscated_app.py
+protected_*.py
+*_protected.py

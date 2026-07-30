@@ -77,6 +77,24 @@ def tool_hybrid_solve(trace: list[dict], predicate_str: str, input_length: int,
         alphabet=range(alphabet_start, alphabet_end))
 
 
+def tool_recover_python_source(path: str, *, max_disasm_lines: int = 80) -> dict:
+    """Recover the structure of a Python-protector-obfuscated file WITHOUT executing it.
+
+    Currently supports enphysic.pro / Ngocuyencoder: deserialize the LZMA+base64 custom
+    marshal payload into a reconstructed code object, then return a structured summary
+    (names, constants, capped bytecode disassembly, nested scopes). Never exec()s —
+    pure static inspection. Returns {available, protector, python_version, top_code}.
+    """
+    try:
+        from tools.eps_deobf import recover_source_summary
+    except Exception as exc:  # noqa: BLE001
+        return {"available": False, "error": f"deobfuscator import failed: {exc}"}
+    try:
+        return recover_source_summary(path, max_disasm_lines=max_disasm_lines)
+    except Exception as exc:  # noqa: BLE001
+        return {"available": False, "error": f"{type(exc).__name__}: {exc}"}
+
+
 # ---------------------------------------------------------------------------
 @mcp.tool()
 def load_target(path: str, rootfs: str = "", arch: str = "", osname: str = "") -> dict:
@@ -122,6 +140,13 @@ def hybrid_solve(trace: list[dict], predicate_str: str, input_length: int,
                  alphabet_start: int = 0, alphabet_end: int = 256) -> dict:
     """Trace-narrowed hybrid solve: narrow by trace then run the pure constraint solver."""
     return tool_hybrid_solve(trace, predicate_str, input_length, alphabet_start, alphabet_end)
+
+
+@mcp.tool()
+def recover_python_source(path: str, max_disasm_lines: int = 80) -> dict:
+    """Recover the structure of a Python-protector-obfuscated file without executing it
+    (supports enphysic.pro / Ngocuyencoder: base64+LZMA+custom marshal)."""
+    return tool_recover_python_source(path, max_disasm_lines=max_disasm_lines)
 
 
 def main() -> None:
