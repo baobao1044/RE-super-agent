@@ -109,10 +109,14 @@ def build_supervisor(*, config_path: str | None = None, session_dir: str | None 
     from agent.specialists.deobfuscation import DeobfuscationSpecialist
 
     cfg = get_config(config_path)
+    llm_cfg = cfg.get("llm", {}) or {}
+    wf_cfg = cfg.get("workflow", {}) or {}
     provider = LiteLLMProvider(
-        model=cfg.get("model", "gpt-4o"),
-        api_key=cfg.get("api_key"),
-        temperature=cfg.get("temperature", 0.2),
+        model=llm_cfg.get("model", "gpt-4o-mini"),
+        api_key=llm_cfg.get("api_key"),
+        temperature=llm_cfg.get("temperature", 0.2),
+        max_tokens=llm_cfg.get("max_tokens", 4096),
+        timeout=llm_cfg.get("timeout", 120),
     )
     # Wire each specialist to its MCP server's tool registry (pure-logic backends degrade
     # gracefully when heavy engines are absent).
@@ -130,7 +134,7 @@ def build_supervisor(*, config_path: str | None = None, session_dir: str | None 
     }
     return Supervisor(provider=provider, sandbox=_sandbox(),
                       specialists=specialists, playbooks_dir=cfg.get("playbooks_dir"),
-                      codegen_dir=cfg.get("codegen_dir"))
+                      codegen_dir=wf_cfg.get("codegen_dir", ".codegen"))
 
 
 def _sandbox():

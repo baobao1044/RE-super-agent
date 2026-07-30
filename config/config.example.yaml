@@ -27,7 +27,7 @@ mcp:
     static:       { command: "python", args: ["-m", "mcp_servers.static.server"] }
     dynamic:      { command: "python", args: ["-m", "mcp_servers.dynamic.server"] }
     symbolic:     { command: "python", args: ["-m", "mcp_servers.symbolic.server"] }
-    deobfuscation:{ command: "python", args: ["-m", "mcp_servers.deobfuscation.server"] }
+    deobfuscation: { command: "python", args: ["-m", "mcp_servers.deobfuscation.server"] }
     malware:      { command: "python", args: ["-m", "mcp_servers.malware.server"] }
   # per-call tool timeout, seconds
   tool_timeout: 120
