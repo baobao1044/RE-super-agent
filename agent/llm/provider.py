@@ -93,6 +93,12 @@ class LiteLLMProvider(LLMProvider):
         message = _get(choice, "message")
         content = _get(message, "content") or ""
         stop_reason = _get(choice, "finish_reason") or ""
+        # GLM reasoning models (GLM-4.6/GLM-5.x) emit analysis in `reasoning_content`
+        # and the final answer in `content`. When the reasoning hits max_tokens, content
+        # stays empty — fall back to reasoning_content so callers still get text.
+        reasoning = _get(message, "reasoning_content") or ""
+        if not content and reasoning:
+            content = reasoning
 
         tool_calls = []
         raw_calls = _get(message, "tool_calls") or []

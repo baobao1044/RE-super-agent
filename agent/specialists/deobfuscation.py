@@ -44,6 +44,11 @@ Available tools:
   recovered bytecode back to readable Python SOURCE (def/class signatures exact, bodies
   best-effort with annotated bytecode comments). Deserializes without executing. Use
   this when you need the actual source code, not just a structural disassembly.
+- decompile_python_source_llm(): PREFERRED for full source recovery. Uses the LLM to
+  translate bytecode annotations into REAL Python source with actual control flow
+  (if/for/while/try-except/comprehension) instead of bytecode comments. No arguments
+  needed. Use this after recover_python_source when you need readable, executable-like
+  Python source.
 
 Strategy (hybrid, avoids path explosion):
 1. Identify the VM dispatcher and handlers via static findings.
@@ -60,9 +65,12 @@ class _WorkspaceRegistry:
     """Wraps the deobf tool registry; injects the workspace VM spec into disasm calls and
     captures lifted specs / disassembly / traces into the workspace + report."""
 
-    def __init__(self, inner: dict[str, Callable], workspace: Workspace):
+    def __init__(self, inner: dict[str, Callable], workspace: Workspace, *,
+                 provider=None, binary_path: str = ""):
         self._inner = inner
         self._ws = workspace
+        self._provider = provider
+        self._binary_path = binary_path
         self.captured: dict[str, object] = {}
         self.lifted = 0
         self.disassembly: list[dict] = []
@@ -101,6 +109,11 @@ class _WorkspaceRegistry:
             res = self._inner[name](arguments) if name in self._inner else {"error": "unknown"}
             self.captured["decompile_python_source"] = res
             return res
+        if name == "decompile_python_source_llm":
+            from tools.llm_lifter import decompile_python_source_with_llm
+            res = decompile_python_source_with_llm(self._binary_path, provider=self._provider)
+            self.captured["decompile_python_source_llm"] = res
+            return res
         return self._inner[name](arguments) if name in self._inner else {"error": f"unknown tool {name}"}
 
     def _merge_spec(self, spec: dict):
@@ -122,7 +135,8 @@ class DeobfuscationSpecialist:
 
     def run(self, *, task: str, binary_path: str | Path, workspace: Workspace) -> dict:
         path = str(binary_path)
-        reg = _WorkspaceRegistry(self.tools_registry, workspace)
+        reg = _WorkspaceRegistry(self.tools_registry, workspace,
+                                provider=self.provider, binary_path=path)
 
         tools = [
             {"type": "function", "function": {"name": "lift_vm_handler",
@@ -161,6 +175,15 @@ class DeobfuscationSpecialist:
               "parameters": {"type": "object", "properties": {
                   "decompiler": {"type": "string", "default": "pycdc"},
                   "timeout": {"type": "integer", "default": 60}}}}},
+            {"type": "function", "function": {"name": "decompile_python_source_llm",
+              "description": "Recover REAL Python source with actual control flow (if/for/while/"
+                             "try-except) from a Python-protector-obfuscated file. Uses the LLM "
+                             "to translate bytecode annotations into readable Python. This goes "
+                             "ONE STEP FURTHER than decompile_python_source: instead of bytecode "
+                             "comments you get actual if/for/comprehension statements. PREFERRED "
+                             "for full source recovery. No arguments needed — the binary path is "
+                             "bound automatically.",
+              "parameters": {"type": "object", "properties": {}}}},
         ]
 
         result = react_loop(
@@ -199,6 +222,15 @@ class DeobfuscationSpecialist:
                          f"{decompiled.get('source_chars',0)} chars"),
                 source="deobfuscation",
             )
+        llm_decompiled = reg.captured.get("decompile_python_source_llm")
+        if isinstance(llm_decompiled, dict) and llm_decompiled.get("available"):
+            workspace.add_finding(
+                kind="python_source_llm_decompiled",
+                summary=(f"LLM-decompiled protected Python to real source: "
+                         f"{llm_decompiled.get('source_chars',0)} chars, "
+                         f"decompiler={llm_decompiled.get('decompiler','?')}"),
+                source="deobfuscation",
+            )
 
         return {
             "narrative": result.final_text,
@@ -207,6 +239,7 @@ class DeobfuscationSpecialist:
             "reconstructed": reg.reconstructed,
             "recovered_source": recovered,
             "decompiled_source": decompiled,
+            "llm_decompiled_source": llm_decompiled,
             "vm_spec": workspace.vm_spec,
             "steps": [{"tool": s.tool_name, "error": s.tool_error} for s in result.steps],
             "truncated": result.truncated,

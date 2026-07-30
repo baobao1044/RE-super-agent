@@ -230,6 +230,9 @@ def _deobf_registry(binary_path: str):
         "decompile_python_source": lambda a: server.tool_decompile_python_source(binary_path,
                                                                                   decompiler=a.get("decompiler", "pylingual"),
                                                                                   timeout=a.get("timeout", 120)),
+        # LLM lifter is handled by the _WorkspaceRegistry wrapper (injects the provider);
+        # this dummy closure is just so the tool name exists in the registry.
+        "decompile_python_source_llm": lambda a: {"available": False, "error": "use via specialist wrapper"},
     }
 
 
