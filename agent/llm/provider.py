@@ -53,10 +53,11 @@ class LLMProvider:
 
 
 class LiteLLMProvider(LLMProvider):
-    def __init__(self, model, *, api_key=None, completion_fn=None,
+    def __init__(self, model, *, api_key=None, api_base=None, completion_fn=None,
                  temperature=0.2, max_tokens=4096, timeout=120):
         self.model = model
         self.api_key = api_key
+        self.api_base = api_base
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.timeout = timeout
@@ -74,6 +75,8 @@ class LiteLLMProvider(LLMProvider):
         }
         if self.api_key:
             call_kwargs["api_key"] = self.api_key
+        if self.api_base:
+            call_kwargs["api_base"] = self.api_base
         if tools:
             call_kwargs["tools"] = tools
         call_kwargs.update(kwargs)

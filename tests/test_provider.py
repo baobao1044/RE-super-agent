@@ -99,6 +99,23 @@ def test_forwards_model_messages_tools_to_completion_fn():
     assert fn.last_kw["temperature"] == 0.5
 
 
+def test_forwards_api_base_to_completion_fn():
+    # OpenAI-compatible endpoint (e.g. W&B Inference) needs a custom base URL.
+    fn = fake_completion(_resp(_msg(content="ok")))
+    prov = LiteLLMProvider(model="openai/zai-org/GLM-5.2", completion_fn=fn,
+                           api_key="wandb_v1_x", api_base="https://api.inference.wandb.ai/v1")
+    prov.complete([{"role": "user", "content": "hi"}])
+    assert fn.last_kw["api_base"] == "https://api.inference.wandb.ai/v1"
+    assert fn.last_kw["api_key"] == "wandb_v1_x"
+
+
+def test_no_api_base_when_not_set():
+    fn = fake_completion(_resp(_msg(content="ok")))
+    prov = LiteLLMProvider(model="gpt-4o-mini", completion_fn=fn, api_key="k")
+    prov.complete([{"role": "user", "content": "hi"}])
+    assert "api_base" not in fn.last_kw
+
+
 def test_missing_litellm_without_completion_fn_raises(monkeypatch):
     # Force the litellm import to fail so the default completion_fn cannot resolve.
     import builtins

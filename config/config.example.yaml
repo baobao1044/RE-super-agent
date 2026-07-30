@@ -7,10 +7,22 @@ llm:
   model: gpt-4o-mini
   # api_key: read from env var below by default; or set inline (avoid committing)
   api_key_env: OPENAI_API_KEY
+  # custom OpenAI-compatible endpoint (e.g. W&B Inference, Azure OpenAI, Ollama).
+  # For OpenAI default leave "". For W&B Inference set the /v1 URL below.
+  api_base: ""
   temperature: 0.2
   max_tokens: 4096
   # timeout per LLM call, seconds
   timeout: 120
+
+# --- Example: Weights & Biases Inference (OpenAI-compatible) ---
+# Copy this block into llm: above and set the key inline or via api_key_env.
+# llm:
+#   provider: openai
+#   model: openai/zai-org/GLM-5.2    # "openai/" prefix routes via the OpenAI client to api_base
+#   api_key: wandb_v1_...            # or api_key_env: WANDB_API_KEY
+#   api_base: https://api.inference.wandb.ai/v1
+#   temperature: 0.2
 
 # --- Per-specialist model overrides (optional; fall back to llm.* above) ---
 specialists:

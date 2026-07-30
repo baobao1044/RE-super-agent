@@ -18,6 +18,7 @@ _DEFAULTS: dict = {
         "provider": "openai",
         "model": "gpt-4o-mini",
         "api_key_env": "OPENAI_API_KEY",
+        "api_base": "",            # custom OpenAI-compatible endpoint (e.g. W&B Inference); "" = provider default
         "temperature": 0.2,
         "max_tokens": 4096,
         "timeout": 120,

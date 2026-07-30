@@ -114,6 +114,7 @@ def build_supervisor(*, config_path: str | None = None, session_dir: str | None 
     provider = LiteLLMProvider(
         model=llm_cfg.get("model", "gpt-4o-mini"),
         api_key=llm_cfg.get("api_key"),
+        api_base=llm_cfg.get("api_base") or None,
         temperature=llm_cfg.get("temperature", 0.2),
         max_tokens=llm_cfg.get("max_tokens", 4096),
         timeout=llm_cfg.get("timeout", 120),
