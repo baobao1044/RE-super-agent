@@ -75,3 +75,32 @@ def test_server_has_mcp_and_tools():
                  "tool_disassemble_vm_bytecode", "tool_reconstruct_native",
                  "tool_hybrid_solve", "tool_build_vm_spec"):
         assert callable(getattr(server, name))
+
+
+PROTECTED_SAMPLE = ROOT / "protected_deobfuscated_app.py"
+
+
+def test_decompile_python_source_tool_missing_file(tmp_path):
+    res = server.tool_decompile_python_source(str(tmp_path / "nope.py"))
+    assert res.get("available") is False
+    assert "not found" in res.get("error", "").lower()
+
+
+def test_decompile_python_source_tool_missing_file_msg(tmp_path):
+    res = server.tool_decompile_python_source(str(tmp_path / "missing.py"))
+    assert res.get("available") is False
+
+
+@pytest.mark.skipif(not PROTECTED_SAMPLE.exists(), reason="no protected sample")
+def test_decompile_python_source_tool_on_protected_sample():
+    res = server.tool_decompile_python_source(str(PROTECTED_SAMPLE), timeout=120)
+    assert res.get("available") is True
+    assert isinstance(res.get("source"), str)
+    assert res["source_chars"] > 0
+    assert ("def " in res["source"]) or ("class " in res["source"]) or ("lambda" in res["source"].lower())
+    assert "decompiler" in res
+    assert res.get("protector") == "enphysic.pro / Ngocuyencoder"
+
+
+def test_server_exposes_decompile_python_source():
+    assert callable(getattr(server, "tool_decompile_python_source", None))

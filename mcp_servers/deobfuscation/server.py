@@ -95,6 +95,25 @@ def tool_recover_python_source(path: str, *, max_disasm_lines: int = 80) -> dict
         return {"available": False, "error": f"{type(exc).__name__}: {exc}"}
 
 
+def tool_decompile_python_source(path: str, *, decompiler: str = "pycdc",
+                                 timeout: int = 60) -> dict:
+    """Recover readable Python SOURCE from a Python-protector-obfuscated file.
+
+    Deserializes the protected code object (never executes it) and lifts the bytecode
+    back to Python source via a structural decompiler (always works on 3.11; an external
+    decompiler is preferred if installed and version-compatible). Returns
+    {available, source, decompiler, protector, python_version, source_chars}.
+    """
+    try:
+        from tools.decompile_lifter import decompile_python_source as _decomp
+    except Exception as exc:  # noqa: BLE001
+        return {"available": False, "error": f"decompiler import failed: {exc}"}
+    try:
+        return _decomp(path, decompiler=decompiler, timeout=timeout)
+    except Exception as exc:  # noqa: BLE001
+        return {"available": False, "error": f"{type(exc).__name__}: {exc}"}
+
+
 # ---------------------------------------------------------------------------
 @mcp.tool()
 def load_target(path: str, rootfs: str = "", arch: str = "", osname: str = "") -> dict:
@@ -147,6 +166,15 @@ def recover_python_source(path: str, max_disasm_lines: int = 80) -> dict:
     """Recover the structure of a Python-protector-obfuscated file without executing it
     (supports enphysic.pro / Ngocuyencoder: base64+LZMA+custom marshal)."""
     return tool_recover_python_source(path, max_disasm_lines=max_disasm_lines)
+
+
+@mcp.tool()
+def decompile_python_source(path: str, decompiler: str = "pycdc",
+                            timeout: int = 60) -> dict:
+    """Recover readable Python SOURCE from a Python-protector-obfuscated file
+    (supports enphysic.pro / Ngocuyencoder). Deserializes the protected code object
+    without executing it and lifts the bytecode back to Python source."""
+    return tool_decompile_python_source(path, decompiler=decompiler, timeout=timeout)
 
 
 def main() -> None:

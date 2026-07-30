@@ -18,7 +18,14 @@ import dis
 import io
 import lzma
 import base64
+import marshal
+import os
+import shutil
+import subprocess
 import sys
+import tempfile
+import importlib.util
+from pathlib import Path
 
 
 def read_u32(s):
@@ -219,6 +226,29 @@ def _scope_summary(code_obj, max_disasm_lines, max_const_chars):
     if nested:
         s["nested"] = [_scope_summary(c, max_disasm_lines, max_const_chars) for c in nested]
     return s
+
+
+# ---------------------------------------------------------------------------
+# Full-source decompilation (re-exported from the standalone lifter module).
+#
+# No installed decompiler supports Python 3.11 here (uncompyle6/decompyle3 refuse
+# 3.11; zrax pycdc needs a C++ toolchain that is absent). The standalone lifter in
+# tools/decompile_lifter.py walks the recovered code objects and emits readable
+# Python source (exact structure, best-effort bodies). These names are re-exported
+# here for backward compatibility with callers importing from tools.eps_deobf.
+# ---------------------------------------------------------------------------
+from tools.decompile_lifter import (  # noqa: E402,F401
+    write_pyc, reconstruct_source, decompile_code, decompile_python_source,
+)
+
+
+def _placeholder_decompile_code(code_obj, *, workdir=None, decompiler="pycdc", timeout=30):
+    """[deprecated] Use ``decompile_code`` from tools.decompile_lifter instead.
+
+    Kept as a stub so the old block is replaced; the real implementation lives in
+    tools.decompile_lifter and is re-exported above. This stub is never called.
+    """
+    raise RuntimeError("use tools.decompile_lifter.decompile_code")
 
 
 if __name__ == "__main__":

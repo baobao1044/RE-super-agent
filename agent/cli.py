@@ -174,6 +174,12 @@ def _dynamic_registry(binary_path: str):
     from mcp_servers.dynamic import server
     return {
         "spawn": lambda a: server.tool_spawn(binary_path),
+        "run_restricted": lambda a: server.tool_run_restricted(
+            binary_path, a.get("args", []),
+            timeout=a.get("timeout", 20),
+            risk_level=a.get("risk_level"),
+            allow_host_fallback=bool(a.get("allow_host_fallback", False)),
+        ),
         "attach": lambda a: server.tool_attach(a.get("pid", 0)),
         "detect_anti_analysis": lambda a: server.tool_detect_anti_analysis(binary_path),
         "recommend_handling": lambda a: server.tool_recommend_handling(a.get("anti_hints", [])),
@@ -221,6 +227,9 @@ def _deobf_registry(binary_path: str):
                                                            a.get("alphabet_end", 256)),
         "recover_python_source": lambda a: server.tool_recover_python_source(binary_path,
                                                                               max_disasm_lines=a.get("max_disasm_lines", 40)),
+        "decompile_python_source": lambda a: server.tool_decompile_python_source(binary_path,
+                                                                                  decompiler=a.get("decompiler", "pycdc"),
+                                                                                  timeout=a.get("timeout", 60)),
     }
 
 

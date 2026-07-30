@@ -27,6 +27,10 @@ Available tools:
 - detect_anti_analysis(path): scan for anti-debug/anti-VM/TLS indicators (static, no exec).
 - recommend_handling(anti_hints): get recommended handling steps before execution.
 - spawn(path, args): spawn the process for instrumentation (frida).
+- run_restricted(args, timeout, risk_level, allow_host_fallback): run a runnable target
+  (e.g. a protected Python script) under weak-isolation restricted subprocess. Refuses
+  HIGH risk. Only set allow_host_fallback=true when Docker is unavailable AND the user
+  explicitly accepted the weak-isolation risk. Captures stdout/stderr/exit_code.
 - attach(target): attach to a running process.
 - list_processes(): list running processes.
 - set_breakpoint(session, location): set a breakpoint.
@@ -35,16 +39,21 @@ Available tools:
 - get_regs(session): read register values.
 
 SAFETY RULES (non-negotiable):
-1. ALWAYS call detect_anti_analysis FIRST, before any spawn/attach.
+1. ALWAYS call detect_anti_analysis FIRST, before any spawn/attach/run_restricted.
 2. If the safety gate refuses execution (HIGH risk or no sandbox), you MUST NOT spawn.
    Report that dynamic execution was refused and rely on static/symbolic results instead.
 3. Apply recommended anti-analysis handling (patch/hide/emulate) before spawning.
 4. Never attempt to execute a binary on the host directly; spawn goes through the sandbox.
+5. For run_restricted: never set allow_host_fallback=true unless the user has opted in;
+   never run a HIGH-risk target; use a short timeout; report captured output, not your guess.
 Be concise. State whether execution was permitted and what behavior you observed.
 """
 
 # Tools that perform real execution / attachment — gated by the safety decision.
-_EXEC_TOOLS = {"spawn", "attach"}
+# run_restricted is a weak-isolation fallback (subprocess) for runnable targets
+# when Docker is unavailable; it carries its own opt-in flag, but we still gate it
+# here so HIGH-risk targets can never reach it.
+_EXEC_TOOLS = {"spawn", "attach", "run_restricted"}
 
 
 class _GatingRegistry:
@@ -73,7 +82,7 @@ class _GatingRegistry:
                     self.captured[name] = refused
                 return refused
         result = self._inner[name](arguments) if name in self._inner else {"error": f"unknown tool {name}"}
-        if name in ("detect_anti_analysis", "recommend_handling", "spawn", "get_regs"):
+        if name in ("detect_anti_analysis", "recommend_handling", "spawn", "get_regs", "run_restricted"):
             self.captured[name] = result
         return result
 
@@ -110,6 +119,16 @@ class DynamicSpecialist:
             {"type": "function", "function": {"name": "spawn",
               "description": "Spawn the process for instrumentation.",
               "parameters": {"type": "object", "properties": {"args": {"type": "array"}}}}},
+            {"type": "function", "function": {"name": "run_restricted",
+              "description": "Run a runnable target (e.g. a protected Python script) under "
+                            "weak-isolation restricted subprocess. Refuses HIGH risk. Only set "
+                            "allow_host_fallback=true when Docker is unavailable and the user "
+                            "opted into the weak-isolation risk. Captures stdout/stderr/exit_code.",
+              "parameters": {"type": "object", "properties": {
+                  "args": {"type": "array", "items": {"type": "string"}},
+                  "timeout": {"type": "integer"},
+                  "risk_level": {"type": "string"},
+                  "allow_host_fallback": {"type": "boolean"}}}}},
             {"type": "function", "function": {"name": "set_breakpoint",
               "description": "Set a breakpoint.",
               "parameters": {"type": "object", "properties": {
@@ -142,12 +161,27 @@ class DynamicSpecialist:
         refused = "spawn" in gate.captured and gate.captured["spawn"].get("refused")
         reason = gate.captured.get("spawn", {}).get("reason", "") if refused else ""
 
+        restricted_run = gate.captured.get("run_restricted")
+        restricted_ok = (isinstance(restricted_run, dict)
+                         and restricted_run.get("available")
+                         and restricted_run.get("ok"))
+        if restricted_ok:
+            workspace.add_finding(
+                kind="restricted_exec",
+                summary=f"Ran target under restricted subprocess: exit_code="
+                        f"{restricted_run.get('exit_code')}, timed_out="
+                        f"{restricted_run.get('timed_out')}, stdout="
+                        f"{(restricted_run.get('stdout') or '')[:80]!r}",
+                source="dynamic",
+            )
+
         return {
             "narrative": result.final_text,
             "anti_hints": anti_hints,
             "executed": executed,
             "refused": refused,
             "reason": reason,
+            "restricted_run": restricted_run,
             "steps": [{"tool": s.tool_name, "error": s.tool_error} for s in result.steps],
             "truncated": result.truncated,
         }

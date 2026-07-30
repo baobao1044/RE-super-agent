@@ -82,3 +82,52 @@ def test_server_has_mcp_and_tools():
                  "tool_recommend_handling", "tool_patch_anti_debug",
                  "tool_hide_debugger", "tool_emulate_clean_environment"):
         assert callable(getattr(server, name))
+
+
+# ---------------------------------------------------------------------------
+# run_restricted: weak-isolation exec of a (Python) target, opt-in only
+# ---------------------------------------------------------------------------
+def _write_py(tmp_path, name, body):
+    import textwrap
+    p = tmp_path / name
+    p.write_text(textwrap.dedent(body))
+    return p
+
+
+def test_run_restricted_runs_benign_python(tmp_path):
+    p = _write_py(tmp_path, "hello.py", "print('DYNAMIC_OUT')")
+    res = server.tool_run_restricted(str(p), timeout=15, allow_host_fallback=True)
+    assert res["available"] is True
+    assert res["ok"] is True
+    assert "DYNAMIC_OUT" in res["stdout"]
+
+
+def test_run_restricted_refuses_high_risk(tmp_path):
+    p = _write_py(tmp_path, "hi.py", "print('x')")
+    res = server.tool_run_restricted(str(p), risk_level="HIGH", allow_host_fallback=True)
+    assert res["available"] is False
+    assert "HIGH" in res.get("error", "") or "high" in res.get("error", "").lower()
+
+
+def test_run_restricted_requires_opt_in(tmp_path):
+    p = _write_py(tmp_path, "hi.py", "print('x')")
+    res = server.tool_run_restricted(str(p), timeout=15)
+    assert res["available"] is False
+    assert "opt-in" in res.get("error", "").lower() or "fallback" in res.get("error", "").lower()
+
+
+def test_run_restricted_timeout(tmp_path):
+    p = _write_py(tmp_path, "sleep.py", "import time; print('S', flush=True); time.sleep(30); print('E')")
+    res = server.tool_run_restricted(str(p), timeout=2, allow_host_fallback=True)
+    assert res["available"] is True
+    assert res["timed_out"] is True
+    assert res["ok"] is False
+
+
+def test_run_restricted_captures_stderr_and_exit(tmp_path):
+    p = _write_py(tmp_path, "fail.py", "import sys; sys.stderr.write('BOOM'); sys.exit(4)")
+    res = server.tool_run_restricted(str(p), timeout=15, allow_host_fallback=True)
+    assert res["available"] is True
+    assert res["ok"] is False
+    assert res["exit_code"] == 4
+    assert "BOOM" in res["stderr"]

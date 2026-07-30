@@ -39,6 +39,11 @@ Available tools:
   return the recovered structure (names, constants, nested scopes, capped bytecode) —
   WITHOUT executing the protected code. Use this first for any .py target that looks
   protected/obfuscated.
+- decompile_python_source(decompiler, timeout): for an enphysic.pro / Ngocuyencoder-
+  protected .py file, go ONE STEP FURTHER than recover_python_source — lift the
+  recovered bytecode back to readable Python SOURCE (def/class signatures exact, bodies
+  best-effort with annotated bytecode comments). Deserializes without executing. Use
+  this when you need the actual source code, not just a structural disassembly.
 
 Strategy (hybrid, avoids path explosion):
 1. Identify the VM dispatcher and handlers via static findings.
@@ -92,6 +97,10 @@ class _WorkspaceRegistry:
             res = self._inner[name](arguments) if name in self._inner else {"error": "unknown"}
             self.captured["recover_python_source"] = res
             return res
+        if name == "decompile_python_source":
+            res = self._inner[name](arguments) if name in self._inner else {"error": "unknown"}
+            self.captured["decompile_python_source"] = res
+            return res
         return self._inner[name](arguments) if name in self._inner else {"error": f"unknown tool {name}"}
 
     def _merge_spec(self, spec: dict):
@@ -142,6 +151,16 @@ class DeobfuscationSpecialist:
                              "Use this for .py files that look protected/obfuscated.",
               "parameters": {"type": "object", "properties": {
                   "max_disasm_lines": {"type": "integer", "default": 40}}}}},
+            {"type": "function", "function": {"name": "decompile_python_source",
+              "description": "Recover readable Python SOURCE (not just structure) from a "
+                             "Python-protector-obfuscated file (enphysic.pro / Ngocuyencoder). "
+                             "Deserializes the protected code object without executing it and "
+                             "lifts the bytecode back to Python source (custom structural "
+                             "decompiler; external decompiler preferred if installed). Use this "
+                             "when you need the actual source code, not just a disassembly.",
+              "parameters": {"type": "object", "properties": {
+                  "decompiler": {"type": "string", "default": "pycdc"},
+                  "timeout": {"type": "integer", "default": 60}}}}},
         ]
 
         result = react_loop(
@@ -171,6 +190,15 @@ class DeobfuscationSpecialist:
                          f"{nested} nested scopes"),
                 source="deobfuscation",
             )
+        decompiled = reg.captured.get("decompile_python_source")
+        if isinstance(decompiled, dict) and decompiled.get("available"):
+            workspace.add_finding(
+                kind="python_source_decompiled",
+                summary=(f"Decompiled protected Python to source: decompiler="
+                         f"{decompiled.get('decompiler','?')}, "
+                         f"{decompiled.get('source_chars',0)} chars"),
+                source="deobfuscation",
+            )
 
         return {
             "narrative": result.final_text,
@@ -178,6 +206,7 @@ class DeobfuscationSpecialist:
             "disassembly": reg.disassembly,
             "reconstructed": reg.reconstructed,
             "recovered_source": recovered,
+            "decompiled_source": decompiled,
             "vm_spec": workspace.vm_spec,
             "steps": [{"tool": s.tool_name, "error": s.tool_error} for s in result.steps],
             "truncated": result.truncated,

@@ -62,6 +62,65 @@ def tool_spawn(path: str, args: list[str] | None = None) -> dict:
     return frida_backend.spawn(path, args)
 
 
+def tool_run_restricted(
+    path: str,
+    args: list[str] | None = None,
+    *,
+    timeout: int = 20,
+    risk_level: str | None = None,
+    allow_host_fallback: bool = False,
+    interpreter: str | None = None,
+) -> dict:
+    """Run a target (Python script) under weak-isolation restricted subprocess.
+
+    Routes execution through the sandbox layer. Refuses HIGH risk. When Docker is
+    available it is the preferred isolation; otherwise the opt-in restricted
+    subprocess fallback is used (the caller must pass allow_host_fallback=True after the
+    user accepted the weak-isolation risk). The target is COPIED into a throwaway scratch
+    dir and run in isolated Python mode (-I), so the original file is never read or
+    written by the child.
+    """
+    import sys
+    from pathlib import Path
+    from tools import sandbox
+
+    risk = (risk_level or "").upper()
+    if risk == "HIGH":
+        return {"available": False,
+                "error": "HIGH risk target: dynamic execution refused (static-only)"}
+
+    # Prefer the Docker sandbox when present (real isolation). For a runnable target
+    # we run it inside the hardened container via the codegen_runner entrypoint only when
+    # the image is available; otherwise fall through to the subprocess fallback.
+    if sandbox.is_available():
+        # Docker path: defer to run_codegen by writing a runner snippet that execs the
+        # target. (Implemented lazily; not exercised when Docker is absent.)
+        return {"available": False,
+                "error": "Docker sandbox exec path not wired for ad-hoc targets; "
+                         "use the subprocess fallback (allow_host_fallback=True)"}
+
+    if not allow_host_fallback:
+        return {"available": False,
+                "error": "host exec requires explicit opt-in (allow_host_fallback=True); "
+                         "Docker unavailable"}
+
+    # Default to the running interpreter: on Windows bare "python" often resolves to the
+    # Microsoft Store stub, which exits 1 instead of running the script.
+    interp = interpreter or sys.executable
+    target = Path(path)
+    if not target.exists():
+        return {"available": False, "error": f"target not found: {path}"}
+    cmd = [interp, "-I", target.name] + list(args or [])
+    try:
+        res = sandbox.run_restricted_subprocess(
+            cmd, scratch_files=[target], timeout=timeout,
+            allow_host_fallback=True,
+        )
+    except sandbox.SandboxUnavailableError as exc:
+        return {"available": False, "error": str(exc)}
+    return {"available": True, **res}
+
+
 def tool_attach(target: str) -> dict:
     """Attach to a running process (frida by name/pid)."""
     return frida_backend.attach(target)
@@ -152,6 +211,24 @@ def recommend_handling(anti_hints: list[str]) -> dict:
 def spawn(path: str, args: list[str] | None = None) -> dict:
     """Spawn a process for instrumentation (frida)."""
     return tool_spawn(path, args)
+
+
+@mcp.tool()
+def run_restricted(
+    path: str,
+    args: list[str] | None = None,
+    timeout: int = 20,
+    risk_level: str | None = None,
+    allow_host_fallback: bool = False,
+) -> dict:
+    """Run a Python target under weak-isolation restricted subprocess (opt-in).
+
+    Refuses HIGH risk; otherwise executes the target in a throwaway scratch dir with a
+    scrubbed env, DEVNULL stdin, and a hard timeout. Only use when Docker is unavailable
+    and the user accepted the weak-isolation risk (set allow_host_fallback=True).
+    """
+    return tool_run_restricted(path, args, timeout=timeout, risk_level=risk_level,
+                               allow_host_fallback=allow_host_fallback)
 
 
 @mcp.tool()
