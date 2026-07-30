@@ -51,7 +51,7 @@ Targets **Windows PE** & **Linux ELF** (x86 / x64) · **Python-protector-obfusca
             │                            │                             │
       ┌─────▼─────┐              ┌───────▼────────┐            ┌───────▼──────┐
       │   CLI     │              │  Orchestration │            │   Safety     │
-      │ re-agent  │──→ Supervisor │  (Python core) │            │  & Isolation │
+      │ re-agent  │──→ Supervisor│  (Python core) │            │  & Isolation │
       └─────┬─────┘              └───────┬────────┘            └───────┬──────┘
             │                            │                             │
             │                     ┌──────┼──────┐                      │
@@ -70,19 +70,19 @@ Targets **Windows PE** & **Linux ELF** (x86 / x64) · **Python-protector-obfusca
             │            └───────────────┘
             │
    ┌────────┴──────────────────────────────────────────────────────────────┐
-   │                        5 Domain Specialists                            │
-   │                                                                        │
+   │                        5 Domain Specialists                           │
+   │                                                                       │
    │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────────┐  ┌─────────┐│
-   │  │  Static   │  │ Dynamic  │  │ Symbolic │  │Deobfuscate │  │ Malware ││
+   │  │  Static  │  │ Dynamic  │  │ Symbolic │  │Deobfuscate │  │ Malware ││
    │  └─────┬────┘  └─────┬────┘  └─────┬────┘  └─────┬──────┘  └────┬────┘│
-   │        │             │             │             │               │     │
+   │        │             │             │             │              │     │
    │  ┌─────▼────┐  ┌─────▼────┐  ┌─────▼────┐  ┌─────▼──────┐  ┌────▼────┐│
-   │  │MCP Server│  │MCP Server│  │MCP Server│  │MCP Server  │  │MCP Server││
-   │  │Ghidra+r2 │  │Frida+gdb │  │  angr    │  │Qiling+VM   │  │capa+YARA ││
-   │  │+capstone │  │+WinDbg   │  │  +brute  │  │+LLM lifter │  │+binwalk  ││
-   │  │  (8 tools)│  │ (16 tools)│  │ (5 tools)│  │  (9 tools) │  │ (6 tools)││
+   │  │MCP Server│  │MCP Server│  │MCP Server│  │MCP Server  │  │MCP Server│
+   │  │Ghidra+r2 │  │Frida+gdb │  │  angr    │  │Qiling+VM   │  │capa+YARA │
+   │  │+capstone │  │+WinDbg   │  │  +brute  │  │+LLM lifter │  │+binwalk  │
+   │  │ (8 tools)│  │(16 tools)│  │ (5 tools)│  │  (9 tools) │  │ (6 tools)│
    │  └──────────┘  └──────────┘  └──────────┘  └────────────┘  └─────────┘│
-   └────────────────────────────────────────────────────────────────────────┘
+   └───────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
