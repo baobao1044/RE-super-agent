@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+/* Base: Inter as default sans for the whole video.
+   Monospace is applied inline via fontFamily where needed. */
+* {
+  box-sizing: border-box;
+}

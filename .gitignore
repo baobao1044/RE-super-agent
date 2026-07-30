@@ -39,6 +39,11 @@ Thumbs.db
 # ZCode harness workspace (not part of this project)
 .zcode/
 
+# Remotion video project (node_modules heavy; only commit src + rendered assets in docs/)
+video/node_modules/
+video/out/
+video/render.log
+
 # Project: secrets & runtime state
 config/config.yaml
 config/config.local.yaml

@@ -22,6 +22,16 @@ Targets **Windows PE** & **Linux ELF** (x86 / x64) · **Python-protector-obfusca
 > you are authorized to analyze. Never execute untrusted code on the host — the agent
 > routes all dynamic execution through an isolated sandbox.
 
+### 🎬 Intro video
+
+<video src="docs/assets/re-intro.mp4" width="100%" controls muted>
+  Your browser does not support the video tag. Watch the intro at docs/assets/re-intro.mp4
+</video>
+
+*A 66-second tour: architecture → capabilities → Python deobfuscation pipeline → safety
+model → adaptive workflow engine. Built with [Remotion](https://www.remotion.dev)
+(source in `video/`).*
+
 ---
 
 ## Table of contents
